@@ -5,7 +5,7 @@ import time
 
 # Import the test functions and LOG_FILE from your existing module
 # Make sure test_canteen_ui.py is in the same folder or in PYTHONPATH
-from test_canteen_ui import add_employee, LOG_FILE, employee_meal_schedule_test
+from test_canteen_ui import add_employee, LOG_FILE, employee_meal
 
 
 def clear_log_file():
@@ -40,7 +40,6 @@ def run_selected_test():
                 departments = [d.strip() for d in departments_entry.get().split(",") if d.strip()]
                 is_active = is_active_var.get()
 
-                # Basic validation
                 if not username or not password or not emp_id or not first_name or not last_name:
                     messagebox.showwarning("Input Error", "Please fill required fields: username, password, employee id, first and last names.")
                     status_label.config(text="Idle...", fg="black")
@@ -63,29 +62,24 @@ def run_selected_test():
                                     fg=("green" if success else "red"))
 
             elif test_name == "Employee Meal Schedule Test":
-                # date_str = ems_date_entry.get().strip()
-                # schedule_for_tomorrow = ems_schedule_tomorrow_var.get()
-                # tomorrow_meals = [m.strip() for m in ems_tomorrow_meals_entry.get().split(",") if m.strip()]
+                meal_date = ems_date_entry.get().strip()
                 meal_schedule_list = [m.strip() for m in ems_meal_schedule_entry.get().split(",") if m.strip()]
                 departments = [d.strip() for d in ems_departments_entry.get().split(",") if d.strip()]
                 employee_ids = [e.strip() for e in ems_employee_ids_entry.get().split(",") if e.strip()]
 
-                # Basic validation
-                if not username or not password:
-                    messagebox.showwarning("Input Error", "Please fill required fields: username, password, and date.")
+                if not username or not password or not meal_date:
+                    messagebox.showwarning("Input Error", "Please fill username, password, and meal date.")
                     status_label.config(text="Idle...", fg="black")
                     run_button.config(state=tk.NORMAL)
                     return
 
-                success, logs = employee_meal_schedule_test(
+                success, logs = employee_meal(
                     username=username,
                     password=password,
-                    # date_str=date_str,
-                    # schedule_for_tomorrow=schedule_for_tomorrow,
-                    # tomorrow_meals=tomorrow_meals,
+                    meal_date=meal_date,
                     meal_schedule_list=meal_schedule_list,
                     department_list=departments,
-                    employee_id_list=employee_ids,
+                    employee_list=employee_ids,
                     log_callback=lambda m: append_log(m)
                 )
 
@@ -103,7 +97,6 @@ def run_selected_test():
             run_button.config(state=tk.NORMAL)
 
     threading.Thread(target=task, daemon=True).start()
-
 
 # --- Dynamic Form Update ---
 def update_form(*args):
@@ -148,30 +141,22 @@ def update_form(*args):
         tk.Checkbutton(form_frame, variable=is_active_var).grid(row=7, column=1, pady=2)
 
     elif test_name == "Employee Meal Schedule Test":
-        # tk.Label(form_frame, text="Date (YYYY-MM-DD):", font=("Arial", 12)).grid(row=2, column=0, sticky="e", pady=2)
-        # globals()["ems_date_entry"] = tk.Entry(form_frame, font=("Arial", 12))
-        # ems_date_entry.grid(row=2, column=1, pady=2)
+        tk.Label(form_frame, text="Meal Date (YYYY-MM-DD):", font=("Arial", 12)).grid(row=2, column=0, sticky="e", pady=2)
+        globals()["ems_date_entry"] = tk.Entry(form_frame, font=("Arial", 12))
+        ems_date_entry.grid(row=2, column=1, pady=2)
 
-        # tk.Label(form_frame, text="Schedule for Tomorrow?", font=("Arial", 12)).grid(row=3, column=0, sticky="e", pady=2)
-        # global ems_schedule_tomorrow_var
-        # ems_schedule_tomorrow_var = tk.BooleanVar(value=False)
-        # tk.Checkbutton(form_frame, variable=ems_schedule_tomorrow_var).grid(row=3, column=1, pady=2)
-
-        # tk.Label(form_frame, text="Tomorrow Meals (comma separated):", font=("Arial", 12)).grid(row=4, column=0, sticky="e", pady=2)
-        # globals()["ems_tomorrow_meals_entry"] = tk.Entry(form_frame, font=("Arial", 12))
-        # ems_tomorrow_meals_entry.grid(row=4, column=1, pady=2)
-
-        tk.Label(form_frame, text="Meal Schedule (comma separated):", font=("Arial", 12)).grid(row=5, column=0, sticky="e", pady=2)
+        tk.Label(form_frame, text="Meal Schedule (comma separated):", font=("Arial", 12)).grid(row=3, column=0, sticky="e", pady=2)
         globals()["ems_meal_schedule_entry"] = tk.Entry(form_frame, font=("Arial", 12))
-        ems_meal_schedule_entry.grid(row=5, column=1, pady=2)
+        ems_meal_schedule_entry.grid(row=3, column=1, pady=2)
 
-        tk.Label(form_frame, text="Departments (comma separated):", font=("Arial", 12)).grid(row=6, column=0, sticky="e", pady=2)
+        tk.Label(form_frame, text="Departments (comma separated):", font=("Arial", 12)).grid(row=4, column=0, sticky="e", pady=2)
         globals()["ems_departments_entry"] = tk.Entry(form_frame, font=("Arial", 12))
-        ems_departments_entry.grid(row=6, column=1, pady=2)
+        ems_departments_entry.grid(row=4, column=1, pady=2)
 
-        tk.Label(form_frame, text="Employee IDs (comma separated):", font=("Arial", 12)).grid(row=7, column=0, sticky="e", pady=2)
+        tk.Label(form_frame, text="Employee Names/IDs (comma separated):", font=("Arial", 12)).grid(row=5, column=0, sticky="e", pady=2)
         globals()["ems_employee_ids_entry"] = tk.Entry(form_frame, font=("Arial", 12))
-        ems_employee_ids_entry.grid(row=7, column=1, pady=2)
+        ems_employee_ids_entry.grid(row=5, column=1, pady=2)
+
 
     # small spacer
     form_frame.grid_columnconfigure(0, minsize=10)

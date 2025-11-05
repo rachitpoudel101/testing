@@ -1,41 +1,11 @@
-[2025-11-04 14:41:25]  Starting Employee Meal Schedule Test...
-[2025-11-04 14:41:25]  Logging in...
-[2025-11-04 14:41:27]  Chrome driver initialized with Basic Auth
-[2025-11-04 14:41:30] Login submitted.
-[2025-11-04 14:41:33] Employee Meal Schedule page loaded.
-[2025-11-04 14:41:35] Clicked 'Create' button.
-[2025-11-04 14:41:48]  Meal schedule selection skipped: Message: 
-
-[2025-11-04 14:41:50] 1
-[2025-11-04 14:41:50] 3
-[2025-11-04 14:41:51] Could not select department 'ACCOUNT': Message: element click intercepted: Element <span class="multiselect__placeholder">...</span> is not clickable at point (312, 125). Other element would receive the click: <div class="flex flex-col w-[200px] w-[200px] cursor-not-allowed">...</div>
-  (Session info: chrome=141.0.7390.122); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#elementclickinterceptedexception
-Stacktrace:
-#0 0x5747d28aafea <unknown>
-#1 0x5747d2328d06 <unknown>
-#2 0x5747d2381dac <unknown>
-#3 0x5747d237fc2d <unknown>
-#4 0x5747d237d292 <unknown>
-#5 0x5747d237c9a0 <unknown>
-#6 0x5747d236f16b <unknown>
-#7 0x5747d23a0e12 <unknown>
-#8 0x5747d236eae7 <unknown>
-#9 0x5747d23a0fde <unknown>
-#10 0x5747d23c6b3b <unknown>
-#11 0x5747d23a0be3 <unknown>
-#12 0x5747d236d2d2 <unknown>
-#13 0x5747d236df91 <unknown>
-#14 0x5747d286e9e8 <unknown>
-#15 0x5747d287284f <unknown>
-#16 0x5747d2855ec9 <unknown>
-#17 0x5747d28733f5 <unknown>
-#18 0x5747d283b74f <unknown>
-#19 0x5747d2897cc8 <unknown>
-#20 0x5747d2897ea3 <unknown>
-#21 0x5747d28a9f83 <unknown>
-#22 0x777a54e9caa4 <unknown>
-#23 0x777a54f29c6c <unknown>
-
-[2025-11-04 14:42:08] Employee selection skipped: Employee search input not found!
-[2025-11-04 14:42:08] Clicked 'Add' button successfully.
-[2025-11-04 14:42:10] Clicked 'Save' button.
+[2025-11-05 12:40:12] Starting Employee Meal Schedule Test...
+[2025-11-05 12:40:14] Chrome driver initialized with Basic Auth
+[2025-11-05 12:40:14] Logging in...
+[2025-11-05 12:40:16] Login submitted.
+[2025-11-05 12:40:18] Employee Meal Schedule page loaded.
+[2025-11-05 12:40:20] Clicked 'Create'.
+[2025-11-05 12:40:21] Filled calendar-input = '2082-07-20'
+[2025-11-05 12:40:21] Meal date entered: 2082-07-20
+[2025-11-05 12:40:22] Clicked Save.
+[2025-11-05 12:40:24] Meal schedule submitted successfully!
+[2025-11-05 12:40:24] Browser closed.
