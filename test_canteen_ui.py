@@ -189,21 +189,21 @@ class EmployeeMealTest(BaseCanteenAutomation):
             self.log("Clicked 'Create'.")
             time.sleep(1)
 
-            # 1️⃣ Fill Meal Date and press ENTER
+            # Fill Meal Date and press ENTER
             self.fill_field("calendar-input", meal_date)
             date_input = self.driver.find_element(By.CLASS_NAME, "calendar-input")
             date_input.send_keys(Keys.ENTER)
             self.log(f"Meal date entered: {meal_date}")
             time.sleep(0.5)
 
-            # # 2️⃣ Select Meal Schedule
-            # self._select_multiselect("Select Meal Schedule", meal_schedule_list)
+            # Select Meal Schedule
+            self._select_multiselect("Select Meal Schedule", meal_schedule_list)
 
-            # # 3️⃣ Select Department
-            # self._select_multiselect("Select Department", department_list)
+            # Select Department
+            self._select_multiselect("Select Department", department_list)
 
-            # # 4️⃣ Select Employee
-            # self._select_multiselect("Search by employee id or name", employee_list)
+            # Select Employee
+            self._select_multiselect("Search by employee id or name", employee_list)
 
             # Click Save
             self.wait_click(By.XPATH, "//button[normalize-space()='Save']")
@@ -220,58 +220,57 @@ class EmployeeMealTest(BaseCanteenAutomation):
             self.quit()
 
     # -----------------------
-    # Helper: Scoped Multiselect
+    # Helper: Robust Multiselect
     # -----------------------
     def _select_multiselect(self, placeholder_text, items_to_select):
+        if not items_to_select:
+            return
         try:
-            # Find the specific multiselect container by its placeholder text
-            dropdown_container = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, f"//div[contains(@class,'multiselect')][.//span[contains(@class,'multiselect__placeholder') and normalize-space(text())='{placeholder_text}']]")
-                )
+            # 1️⃣ Click the placeholder to open dropdown
+            placeholder = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable((By.XPATH, f"//span[contains(text(), '{placeholder_text}')]"))
             )
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", dropdown_container)
-            self.driver.execute_script("arguments[0].click();", dropdown_container)
-            time.sleep(0.3)
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", placeholder)
+            self.driver.execute_script("arguments[0].click();", placeholder)
+            time.sleep(0.5)
 
-            # Find input box inside this container
-            input_box = dropdown_container.find_element(By.CSS_SELECTOR, "input.multiselect__input")
+            # 2️⃣ Wait for dropdown options
+            dropdown_list = WebDriverWait(self.driver, 5).until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ul.multiselect__content > li"))
+            )
 
+            # 3️⃣ Select each item
             for item in items_to_select:
-                input_box.clear()
-                input_box.send_keys(item)
-                time.sleep(0.5)
+                selected = False
+                for li in dropdown_list:
+                    span = li.find_element(By.TAG_NAME, "span")
+                    if item.lower() in span.text.lower():
+                        self.driver.execute_script("arguments[0].scrollIntoView(true);", li)
+                        self.driver.execute_script("arguments[0].click();", li)
+                        self.log(f"Selected '{item}' from {placeholder_text}")
+                        selected = True
+                        time.sleep(0.3)
+                        break
+                if not selected:
+                    self.log(f"Item '{item}' not found in {placeholder_text}")
 
-                # Click the correct option
-                option = WebDriverWait(self.driver, 5).until(
-                    EC.element_to_be_clickable(
-                        (By.XPATH, f"//span[contains(@class,'multiselect__option') and normalize-space(text())='{item}']")
-                    )
-                )
-                option.click()
-                time.sleep(0.3)
-                self.log(f"Selected '{item}' from {placeholder_text}")
-
-            # Confirm selection
-            input_box.send_keys(Keys.ENTER)
+            # 4️⃣ Close dropdown
+            self.driver.execute_script("document.body.click();")
             time.sleep(0.3)
 
         except Exception as e:
             self.log(f"{placeholder_text} selection failed: {e}")
-
-
+            self.log(traceback.format_exc())
 
 
 # ----------------------------------------------------------------------
-#  Wrapper functions (used by Tkinter GUI)
+#  Wrapper function (Tkinter)
 # ----------------------------------------------------------------------
-def add_employee(username, password, employee_id, first_name, last_name, middle_name="", department_list=None, is_active=True, log_callback=None):
-    test = AddEmployeeTest(username, password, log_callback)
-    result = test.run(employee_id, first_name, last_name, middle_name, department_list, is_active)
-    return result, "\n".join(test.logs)
-
-
 def employee_meal(username, password, meal_date, meal_schedule_list=None, department_list=None, employee_list=None, log_callback=None):
     test = EmployeeMealTest(username, password, log_callback)
     result = test.run(meal_date, meal_schedule_list, department_list, employee_list)
+    return result, "\n".join(test.logs)
+def add_employee(username, password, employee_id, first_name, last_name, middle_name="", department_list=None, is_active=True, log_callback=None):
+    test = AddEmployeeTest(username, password, log_callback)
+    result = test.run(employee_id, first_name, last_name, middle_name, department_list, is_active)
     return result, "\n".join(test.logs)
