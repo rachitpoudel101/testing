@@ -14,10 +14,8 @@ class PurchaseOrder(BaseCanteenAutomation):
             self.log("Dashboard loaded.")
             time.sleep(2)
 
-            # Go to Purchase Order page
             self.go_to_purchase_order()
 
-            # Apply filter and optional search
             self.filter_purchase_order(
                 requisition_status="All",
                 from_date="2025-11-04",
@@ -25,14 +23,14 @@ class PurchaseOrder(BaseCanteenAutomation):
                 search_term="Astha Bhandari (Mavorion)"
             )
 
-            self.log("Purchase Order filtered and search executed.")
-            time.sleep(1)
-
         except Exception as e:
             self.log(f"Error loading dashboard: {e}")
             traceback.print_exc()
         finally:
+            # small delay before quitting, so browser doesn’t close too soon
+            time.sleep(2)
             self.quit()
+
 
     def go_to_purchase_order(self):
         """Navigate to Purchase Order from sidebar."""
@@ -130,12 +128,6 @@ class PurchaseOrder(BaseCanteenAutomation):
         except Exception as e:
             self.log(f"Error filtering purchase order or clicking buttons: {e}")
             traceback.print_exc()
-    def create_purchase_order(self):
-        """Placeholder for creating a new purchase order."""
-        self.log("Creating a new purchase order...")
-        # Here you would implement the logic to create a new purchase order
-        
-        pass
 
 
 # Entry point
