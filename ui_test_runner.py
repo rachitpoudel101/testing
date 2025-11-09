@@ -3,9 +3,8 @@ from tkinter import messagebox, scrolledtext
 import threading
 import time
 
-# Import the test functions and LOG_FILE from your existing module
-# Make sure test_canteen_ui.py is in the same folder or in PYTHONPATH
-from test_canteen_ui import add_employee, LOG_FILE, employee_meal
+# Import the updated Selenium test functions
+from test_canteen_ui import add_employee, employee_meal, LOG_FILE
 
 
 def clear_log_file():
@@ -13,7 +12,7 @@ def clear_log_file():
         f.write("")  # Clear existing log
 
 
-# --- Helper to append logs to the UI and (optionally) scroll ---
+# --- Helper to append logs to the UI ---
 def append_log(msg):
     timestamp = time.strftime("[%Y-%m-%d %H:%M:%S] ")
     log_text.insert(tk.END, timestamp + msg + "\n")
@@ -41,7 +40,9 @@ def run_selected_test():
                 is_active = is_active_var.get()
 
                 if not username or not password or not emp_id or not first_name or not last_name:
-                    messagebox.showwarning("Input Error", "Please fill required fields: username, password, employee id, first and last names.")
+                    messagebox.showwarning(
+                        "Input Error", "Please fill required fields: username, password, employee id, first and last names."
+                    )
                     status_label.config(text="Idle...", fg="black")
                     run_button.config(state=tk.NORMAL)
                     return
@@ -58,8 +59,10 @@ def run_selected_test():
                     log_callback=lambda m: append_log(m)
                 )
 
-                status_label.config(text=("Employee Added!" if success else "Add Employee Failed!"),
-                                    fg=("green" if success else "red"))
+                status_label.config(
+                    text=("Employee Added!" if success else "Add Employee Failed!"),
+                    fg=("green" if success else "red")
+                )
 
             elif test_name == "Employee Meal Schedule Test":
                 meal_date = ems_date_entry.get().strip()
@@ -68,7 +71,9 @@ def run_selected_test():
                 employee_ids = [e.strip() for e in ems_employee_ids_entry.get().split(",") if e.strip()]
 
                 if not username or not password or not meal_date:
-                    messagebox.showwarning("Input Error", "Please fill username, password, and meal date.")
+                    messagebox.showwarning(
+                        "Input Error", "Please fill username, password, and meal date."
+                    )
                     status_label.config(text="Idle...", fg="black")
                     run_button.config(state=tk.NORMAL)
                     return
@@ -83,8 +88,10 @@ def run_selected_test():
                     log_callback=lambda m: append_log(m)
                 )
 
-                status_label.config(text=("Meal Schedule Created!" if success else "Meal Schedule Failed!"),
-                                    fg=("green" if success else "red"))
+                status_label.config(
+                    text=("Meal Schedule Created!" if success else "Meal Schedule Failed!"),
+                    fg=("green" if success else "red")
+                )
 
             else:
                 append_log(f"{test_name} is not implemented.")
@@ -97,6 +104,7 @@ def run_selected_test():
             run_button.config(state=tk.NORMAL)
 
     threading.Thread(target=task, daemon=True).start()
+
 
 # --- Dynamic Form Update ---
 def update_form(*args):
@@ -157,7 +165,6 @@ def update_form(*args):
         globals()["ems_employee_ids_entry"] = tk.Entry(form_frame, font=("Arial", 12))
         ems_employee_ids_entry.grid(row=5, column=1, pady=2)
 
-
     # small spacer
     form_frame.grid_columnconfigure(0, minsize=10)
 
@@ -170,14 +177,9 @@ root.geometry("820x740")
 
 tk.Label(root, text="Select Test to Run", font=("Arial", 14, "bold")).pack(pady=10)
 
-# List of tests (add more if you implement them in test_canteen_ui)
-tests = ["Add Employee Test",
-          "Employee Meal Schedule Test"
-          ]
-
+tests = ["Add Employee Test", "Employee Meal Schedule Test"]
 test_var = tk.StringVar(root)
 test_var.set(tests[0])
-
 test_menu = tk.OptionMenu(root, test_var, *tests)
 test_menu.pack(pady=5)
 
@@ -185,7 +187,6 @@ form_frame = tk.Frame(root)
 form_frame.pack(pady=10)
 
 update_form()
-# trace to redraw the form when the selected test changes
 test_var.trace("w", update_form)
 
 run_button = tk.Button(root, text="▶ Run Test", font=("Arial", 12), bg="#4CAF50", fg="white", command=run_selected_test)
@@ -193,10 +194,6 @@ run_button.pack(pady=8)
 
 status_label = tk.Label(root, text="Idle...", font=("Arial", 12))
 status_label.pack(pady=5)
-
-# Controls row for clearing logs and saving logs
-controls_frame = tk.Frame(root)
-controls_frame.pack(pady=6)
 
 tk.Label(root, text="Test Logs:", font=("Arial", 12, "bold")).pack(pady=5)
 log_text = scrolledtext.ScrolledText(root, height=18, width=100, font=("Courier", 10))

@@ -10,7 +10,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-
 # --- Constants ---
 AUTH_USER = "mav"
 AUTH_PASS = "mavsecret"
@@ -43,20 +42,30 @@ class BaseCanteenAutomation:
     def init_driver(self):
         chrome_options = Options()
         chrome_options.add_argument("--start-maximized")
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        prefs = {
+            "credentials_enable_service": False,
+            "profile.password_manager_enabled": False,
+            "profile.password_manager_leak_detection": False
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
         auth_header = base64.b64encode(f"{AUTH_USER}:{AUTH_PASS}".encode()).decode()
-        driver.execute_cdp_cmd("Network.enable", {})
-        driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {"headers": {"Authorization": f"Basic {auth_header}"}})
-        self.driver = driver
+        self.driver.execute_cdp_cmd("Network.enable", {})
+        self.driver.execute_cdp_cmd("Network.setExtraHTTPHeaders", {"headers": {"Authorization": f"Basic {auth_header}"}})
         self.log("Chrome driver initialized with Basic Auth")
 
     def login(self):
         self.log("Logging in...")
         self.driver.get(LOGIN_URL)
-        WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.ID, "username")))
-        self.driver.find_element(By.ID, "username").send_keys(self.username)
-        self.driver.find_element(By.ID, "password").send_keys(self.password)
-        self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
+        wait = WebDriverWait(self.driver, 10)
+        username_field = wait.until(EC.presence_of_element_located((By.NAME, "username")))
+        password_field = self.driver.find_element(By.NAME, "password")
+        username_field.send_keys(self.username)
+        password_field.send_keys(self.password)
+        login_button = self.driver.find_element(By.XPATH, "//button[contains(., 'Login') or contains(., 'Sign In')]")
+        login_button.click()
         self.log("Login submitted.")
         time.sleep(2)
 
@@ -77,6 +86,7 @@ class BaseCanteenAutomation:
             self.driver.quit()
             self.log("Browser closed.")
 
+
 # ----------------------------------------------------------------------
 #  Add Employee Test Class
 # ----------------------------------------------------------------------
@@ -88,7 +98,6 @@ class AddEmployeeTest(BaseCanteenAutomation):
         try:
             self.init_driver()
             self.login()
-
             self.driver.get(EMPLOYEE_URL)
             self.log("Employee page loaded.")
             time.sleep(2)
@@ -119,14 +128,10 @@ class AddEmployeeTest(BaseCanteenAutomation):
 
             # Department multiselect
             try:
-                dropdown = WebDriverWait(self.driver, 10).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, "span.multiselect__placeholder"))
-                )
+                dropdown = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span.multiselect__placeholder")))
                 dropdown.click()
                 for dept in department_list:
-                    option = WebDriverWait(self.driver, 5).until(
-                        EC.element_to_be_clickable((By.XPATH, f"//span[contains(text(), '{dept}')]"))
-                    )
+                    option = WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.XPATH, f"//span[contains(text(), '{dept}')]")))
                     option.click()
                     self.log(f"Selected department: {dept}")
             except Exception as e:
@@ -147,9 +152,7 @@ class AddEmployeeTest(BaseCanteenAutomation):
             time.sleep(2)
 
             # Verify creation
-            search_input = WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='search']"))
-            )
+            search_input = WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, "input[type='search']")))
             search_input.send_keys(employee_id)
             time.sleep(1)
             if "No Employee Found" in self.driver.page_source:
@@ -167,7 +170,7 @@ class AddEmployeeTest(BaseCanteenAutomation):
 
 
 # ----------------------------------------------------------------------
-#  Employee Meal Schedule Test Class
+#  Employee Meal Schedule Test Class (Updated & Dynamic)
 # ----------------------------------------------------------------------
 class EmployeeMealTest(BaseCanteenAutomation):
     def run(self, meal_date, meal_schedule_list=None, department_list=None, employee_list=None):
@@ -179,37 +182,48 @@ class EmployeeMealTest(BaseCanteenAutomation):
         try:
             self.init_driver()
             self.login()
-
             self.driver.get(EMPLOYEE_MEAL_SCHEDULE_URL)
             self.log("Employee Meal Schedule page loaded.")
             time.sleep(2)
 
-            # Click create button
+            # Click the Create button
             self.wait_click(By.XPATH, "//button[contains(text(), 'Create')]")
             self.log("Clicked 'Create'.")
             time.sleep(1)
 
-            # Fill Meal Date and press ENTER
-            self.fill_field("calendar-input", meal_date)
-            date_input = self.driver.find_element(By.CLASS_NAME, "calendar-input")
+            # Wait for modal
+            MODAL_XPATH = "//div[contains(@class, 'fixed') and contains(@class, 'top-0') and contains(@class, 'z-10')]"
+            modal = WebDriverWait(self.driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, MODAL_XPATH))
+            )
+            self.log("Modal detected.")
+
+            # --- Date Entry ---
+            clear_button = modal.find_element(By.CSS_SELECTOR, ".calendar-clear-input")
+            self.driver.execute_script("arguments[0].click();", clear_button)
+            date_input = modal.find_element(By.CSS_SELECTOR, ".calendar-input")
+            self.driver.execute_script("arguments[0].click();", date_input)
+            date_input.send_keys(meal_date)
             date_input.send_keys(Keys.ENTER)
-            self.log(f"Meal date entered: {meal_date}")
-            time.sleep(0.5)
+            self.log(f"Entered meal date: {meal_date}")
 
-            # Select Meal Schedule
-            self._select_multiselect("Select Meal Schedule", meal_schedule_list)
+            # --- Meal Schedule Multiselect ---
+            self._multiselect_input("Select Meal Schedule", meal_schedule_list)
 
-            # Select Department
-            self._select_multiselect("Select Department", department_list)
+            # --- Department Multiselect ---
+            self._multiselect_input("Select Department", department_list)
 
-            # Select Employee
-            self._select_multiselect("Search by employee id or name", employee_list)
+            # --- Employee Multiselect ---
+            self._multiselect_input("Search by employee id or name", employee_list)
 
-            # Click Save
-            self.wait_click(By.XPATH, "//button[normalize-space()='Save']")
-            self.log("Clicked Save.")
-            time.sleep(2)
+            # Click Add/Save button
+            add_button = WebDriverWait(modal, 10).until(
+                EC.element_to_be_clickable((By.XPATH, ".//button[text()='Add']"))
+            )
+            self.driver.execute_script("arguments[0].click();", add_button)
             self.log("Meal schedule submitted successfully!")
+            time.sleep(2)
+
             return True
 
         except Exception as e:
@@ -220,56 +234,35 @@ class EmployeeMealTest(BaseCanteenAutomation):
             self.quit()
 
     # -----------------------
-    # Helper: Robust Multiselect
+    # Helper: Robust Multiselect Input
     # -----------------------
-    def _select_multiselect(self, placeholder_text, items_to_select):
-        if not items_to_select:
+    def _multiselect_input(self, placeholder_text, items):
+        if not items:
             return
         try:
-            # 1️⃣ Click the placeholder to open dropdown
-            placeholder = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, f"//span[contains(text(), '{placeholder_text}')]"))
+            input_field = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, f"//input[@class='multiselect__input' and @placeholder='{placeholder_text}']"))
             )
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", placeholder)
-            self.driver.execute_script("arguments[0].click();", placeholder)
+            self.driver.execute_script("arguments[0].focus();", input_field)
+            for item in items:
+                input_field.send_keys(item)
+                time.sleep(0.5)
+                input_field.send_keys(Keys.ENTER)
+                self.log(f"Selected '{item}' in '{placeholder_text}'")
             time.sleep(0.5)
-
-            # 2️⃣ Wait for dropdown options
-            dropdown_list = WebDriverWait(self.driver, 5).until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "ul.multiselect__content > li"))
-            )
-
-            # 3️⃣ Select each item
-            for item in items_to_select:
-                selected = False
-                for li in dropdown_list:
-                    span = li.find_element(By.TAG_NAME, "span")
-                    if item.lower() in span.text.lower():
-                        self.driver.execute_script("arguments[0].scrollIntoView(true);", li)
-                        self.driver.execute_script("arguments[0].click();", li)
-                        self.log(f"Selected '{item}' from {placeholder_text}")
-                        selected = True
-                        time.sleep(0.3)
-                        break
-                if not selected:
-                    self.log(f"Item '{item}' not found in {placeholder_text}")
-
-            # 4️⃣ Close dropdown
-            self.driver.execute_script("document.body.click();")
-            time.sleep(0.3)
-
         except Exception as e:
-            self.log(f"{placeholder_text} selection failed: {e}")
+            self.log(f"Multiselect '{placeholder_text}' failed: {e}")
             self.log(traceback.format_exc())
 
 
 # ----------------------------------------------------------------------
-#  Wrapper function (Tkinter)
+#  Wrapper Functions (for Tkinter UI)
 # ----------------------------------------------------------------------
 def employee_meal(username, password, meal_date, meal_schedule_list=None, department_list=None, employee_list=None, log_callback=None):
     test = EmployeeMealTest(username, password, log_callback)
     result = test.run(meal_date, meal_schedule_list, department_list, employee_list)
     return result, "\n".join(test.logs)
+
 def add_employee(username, password, employee_id, first_name, last_name, middle_name="", department_list=None, is_active=True, log_callback=None):
     test = AddEmployeeTest(username, password, log_callback)
     result = test.run(employee_id, first_name, last_name, middle_name, department_list, is_active)
