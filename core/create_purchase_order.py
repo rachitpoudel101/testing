@@ -3,7 +3,7 @@ import traceback
 from core_setup import BaseCanteenAutomation
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.ui import WebDriverWait,Select
 from selenium.webdriver.support import expected_conditions as EC
 
 class PurchaseOrder(BaseCanteenAutomation):
@@ -30,8 +30,32 @@ class PurchaseOrder(BaseCanteenAutomation):
             time.sleep(1)
 
             print("[DEBUG] Setting delivery date...")
-            self.delivery_date_fun("2025-11-10")
+            self.delivery_date_fun("2025-11-11")
             print("[DEBUG] Delivery date function completed.")
+
+            print("[DEBUG] Setting Prepared By...")
+            self.prepared_by_fun("rachit")
+            print("[DEBUG] Prepared By field completed.")
+            
+            print("[DEBUG] Setting credit days...")
+            self.Credit_days_fun("120")
+            print("[DEBUG] Credit days function completed.")
+
+            print("[DEBUG] Setting Payment Term...")
+            self.Payment_term_fun("CASH") 
+            print("[DEBUG] Payment Term field completed.")
+            
+            print("[DEBUG] Setting CC-charge...")
+            self.select_cc_charge("Exclusive") 
+            print("[DEBUG] CC Charge field completed.")
+
+            print("[DEBUG] Setting Discount On...")
+            self.select_discount_on("After CC")
+            print("[DEBUG] Discount On field completed.")
+
+            self.tick_checkbox("tax_on_free_active")
+
+            self.select_catalogue("PAR10")
 
         except Exception as e:
             self.log(f"Error loading dashboard: {e}")
@@ -207,6 +231,290 @@ class PurchaseOrder(BaseCanteenAutomation):
             self.log(f"Error selecting delivery date: {e}")
             traceback.print_exc()
 
+    def prepared_by_fun(self, prepared_name):
+        """
+        Type the 'Prepared By' name into the input and press Enter, Vue-friendly.
+        """
+        try:
+            self.log(f"Setting Prepared By: {prepared_name}")
+            prepared_input = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "prepared_by"))
+            )
+
+            # Clear existing value via JS
+            self.driver.execute_script("""
+                const el = arguments[0];
+                el.value = '';
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            """, prepared_input)
+            time.sleep(0.2)
+
+            # Type the new value
+            prepared_input.send_keys(prepared_name)
+            self.driver.execute_script("""
+                const el = arguments[0];
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            """, prepared_input)
+            time.sleep(0.2)
+
+            # Press Enter
+            prepared_input.send_keys(Keys.ENTER)
+            self.log(f"'Prepared By' set successfully: {prepared_name}")
+
+        except Exception as e:
+            self.log(f"Error setting 'Prepared By': {e}")
+            traceback.print_exc()
+
+
+
+    def Credit_days_fun(self, Credit_days):
+        """
+        Set the credit_days select input for a Vue-controlled dropdown.
+        Credit_days must be a string matching the <option> value, e.g., "120", "90", "60".
+        """
+        try:
+            select_element = WebDriverWait(self.driver, 15).until(
+                EC.visibility_of_element_located((By.ID, "credit_days"))
+            )
+
+            # Scroll into view and click
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", select_element)
+            time.sleep(0.2)
+            select_element.click()  # ensures focus and dropdown opens
+            time.sleep(0.2)
+
+            # Set value via JS for Vue reactivity
+            self.driver.execute_script("""
+                const el = arguments[0];
+                const value = arguments[1];
+                el.value = value;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+            """, select_element, str(Credit_days))
+
+            self.log(f"Credit days successfully set to: {Credit_days}")
+
+        except Exception as e:
+            self.log(f"Error selecting credit days: {e}")
+            traceback.print_exc()
+
+    def Payment_term_fun(self, visible_text):
+        """
+        Set the Payment Term select input for Vue-controlled dropdown.
+        """
+        try:
+            self.log(f"Setting Payment Term: {visible_text}")
+
+            # Wait for the select element
+            select_element = WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.ID, "payment_term"))
+            )
+
+            # Scroll into view
+            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", select_element)
+            time.sleep(0.2)
+
+            # Map visible text to option value
+            options = select_element.find_elements(By.TAG_NAME, "option")
+            value_to_select = None
+            for option in options:
+                if option.text.strip().upper() == visible_text.upper():
+                    value_to_select = option.get_attribute("value")
+                    break
+
+            if not value_to_select:
+                raise Exception(f"No Payment Term option matches '{visible_text}'")
+
+            # Set the value via JS and trigger Vue reactivity
+            self.driver.execute_script("""
+                const select = arguments[0];
+                const value = arguments[1];
+                select.value = value;
+                select.dispatchEvent(new Event('input', { bubbles: true }));
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            """, select_element, value_to_select)
+
+            self.log(f"Payment Term successfully set to: {visible_text}")
+            print(f"[DEBUG] Payment Term set to: {visible_text}")
+
+            time.sleep(0.3)
+
+        except Exception as e:
+            self.log(f"Error setting Payment Term: {e}")
+            traceback.print_exc()
+
+    def select_cc_charge(self, cc_value):
+        """Select a CC Charge from the multiselect dropdown."""
+        try:
+            self.log(f"Selecting CC Charge: {cc_value}")
+            print(f"[DEBUG] Selecting CC Charge: {cc_value}")
+
+            wait = WebDriverWait(self.driver, 10)
+
+            # Step 1: Click the multiselect container
+            cc_dropdown = wait.until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//label[contains(., 'CC Charge')]/following::div[contains(@class, 'multiselect')][1]"
+                ))
+            )
+            cc_dropdown.click()
+            print("[DEBUG] CC Charge dropdown clicked.")
+            time.sleep(0.3)
+
+            # Step 2: Locate the input inside the container
+            cc_input = cc_dropdown.find_element(By.CSS_SELECTOR, "input.multiselect__input")
+            self.driver.execute_script("arguments[0].focus();", cc_input)
+            print("[DEBUG] CC Charge input focused.")
+            time.sleep(0.2)
+
+            # Step 3: Type value and press Enter
+            cc_input.send_keys(cc_value)
+            time.sleep(0.5)
+            cc_input.send_keys(Keys.ENTER)
+
+            self.log(f"CC Charge '{cc_value}' selected successfully.")
+            print("[DEBUG] CC Charge selection done.")
+            time.sleep(0.5)
+
+        except Exception as e:
+            self.log(f"Error selecting CC Charge: {e}")
+            traceback.print_exc()
+
+
+    def select_discount_on(self, discount_value):
+        """Select a value from the 'Discount On' multiselect dropdown."""
+        try:
+            self.log(f"Selecting Discount On: {discount_value}")
+            print(f"[DEBUG] Selecting Discount On: {discount_value}")
+
+            wait = WebDriverWait(self.driver, 10)
+
+            # Step 1: Click the multiselect container to open options
+            discount_container = wait.until(
+                EC.element_to_be_clickable((
+                    By.XPATH,
+                    "//div[@class='multiselect__tags' and ./span[contains(@class,'multiselect__single')]]"
+                ))
+            )
+            discount_container.click()
+            print("[DEBUG] Discount On dropdown clicked.")
+            time.sleep(0.5)  # wait for options to render
+
+            # Step 2: Wait for all visible options to appear
+            options = wait.until(
+                EC.visibility_of_all_elements_located((
+                    By.XPATH,
+                    "//div[contains(@class,'multiselect__option')]"
+                ))
+            )
+
+            # Step 3: Loop through options and click the matching one
+            matched = False
+            for opt in options:
+                if opt.text.strip() == discount_value:
+                    opt.click()
+                    matched = True
+                    break
+
+            if not matched:
+                raise Exception(f"Discount On option '{discount_value}' not found.")
+
+            self.log(f"Discount On '{discount_value}' selected successfully.")
+            print("[DEBUG] Discount On selection done.")
+            time.sleep(0.3)
+
+        except Exception as e:
+            self.log(f"Error selecting Discount On: {e}")
+            traceback.print_exc()
+    def tick_checkbox(self, checkbox_id):
+        """
+        Tick a checkbox by its input ID if not already checked.
+        
+        :param checkbox_id: The 'id' attribute of the checkbox input.
+        """
+        try:
+            self.log(f"Toggling checkbox: {checkbox_id}")
+            print(f"[DEBUG] Toggling checkbox: {checkbox_id}")
+
+            wait = WebDriverWait(self.driver, 10)
+
+            # Step 1: Locate the checkbox input
+            checkbox = wait.until(
+                EC.presence_of_element_located((By.ID, checkbox_id))
+            )
+
+            # Step 2: Check if already selected
+            if not checkbox.is_selected():
+                # Click the checkbox using JavaScript to avoid overlay issues
+                self.driver.execute_script("arguments[0].click();", checkbox)
+                self.log(f"Checkbox '{checkbox_id}' ticked successfully.")
+                print(f"[DEBUG] Checkbox '{checkbox_id}' ticked.")
+            else:
+                self.log(f"Checkbox '{checkbox_id}' was already ticked.")
+                print(f"[DEBUG] Checkbox '{checkbox_id}' already ticked.")
+
+            time.sleep(0.3)
+
+        except Exception as e:
+            self.log(f"Error ticking checkbox '{checkbox_id}': {e}")
+            traceback.print_exc()
+
+    def select_catalogue(self, catalogue_name):
+        """Select a catalogue by typing, ticking the checkbox, and confirming."""
+        try:
+            self.log(f"Selecting catalogue: {catalogue_name}")
+            print("[DEBUG] Locating Catalogue multiselect container...")
+
+            # Click the main container (not the text span)
+            multiselect_container = WebDriverWait(self.driver, 10).until(
+                EC.element_to_be_clickable(
+                    (By.XPATH, "//div[contains(@class, 'multiselect__tags') and .//span[contains(., 'Select Catalogue')]]")
+                )
+            )
+            multiselect_container.click()
+            print("[DEBUG] Catalogue dropdown clicked.")
+            self.log("Clicked Catalogue dropdown to activate input.")
+            time.sleep(0.5)
+
+            # Locate the hidden input field (by placeholder)
+            print("[DEBUG] Locating hidden Catalogue input...")
+            input_field = self.driver.find_element(
+                By.XPATH,
+                "//input[@class='multiselect__input' and @placeholder='Select Catalogue']"
+            )
+
+            # Focus via JavaScript
+            print("[DEBUG] Focusing hidden Catalogue input via JS...")
+            self.driver.execute_script("arguments[0].focus();", input_field)
+            time.sleep(0.3)
+
+            # Type the catalogue name
+            print(f"[DEBUG] Typing Catalogue: {catalogue_name}")
+            input_field.send_keys(catalogue_name)
+            time.sleep(1)
+
+            # Wait for dropdown option and click it (tick checkbox)
+            print("[DEBUG] Waiting for catalogue option to appear...")
+            option_xpath = f"//span[contains(@class,'multiselect__option')][contains(., '{catalogue_name}')]"
+            option_element = WebDriverWait(self.driver, 5).until(
+                EC.element_to_be_clickable((By.XPATH, option_xpath))
+            )
+            option_element.click()
+            print(f"[DEBUG] Catalogue '{catalogue_name}' checkbox clicked.")
+
+            # Close dropdown (press ENTER)
+            input_field.send_keys(Keys.ENTER)
+            self.log(f"Catalogue '{catalogue_name}' selected successfully.")
+            print("[DEBUG] Catalogue selection completed.")
+            time.sleep(0.5)
+
+        except Exception as e:
+            self.log(f"Error selecting catalogue: {e}")
+            print(f"[ERROR] {e}")
+            traceback.print_exc()
 
 # Entry point
 if __name__ == "__main__":
