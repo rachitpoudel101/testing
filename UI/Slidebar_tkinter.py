@@ -1,162 +1,324 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import functools
+from PIL import Image, ImageTk
 
 class AutomationDashboard(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Automation Dashboard")
-        self.geometry("1300x750")
-        self.configure(bg="#F0F2F5")
+        self.geometry("1400x800")
+        self.configure(bg="#F8F9FA")
 
-        self.sidebar_width = 280
-        self.create_sidebar()
-        self.create_main_area()
+        # Colors
+        self.colors = self.get_colors()
 
-    def create_sidebar(self):
-        sidebar_container = tk.Frame(self, bg="#2F3E50", width=self.sidebar_width)
-        sidebar_container.pack(side="left", fill="y")
-        sidebar_container.pack_propagate(False)
+        # Styles
+        self.init_styles()
 
-        canvas = tk.Canvas(sidebar_container, bg="#2F3E50", width=self.sidebar_width, highlightthickness=0)
-        canvas.pack(side="left", fill="y", expand=True)
-
-        scrollbar = ttk.Scrollbar(sidebar_container, orient="vertical", command=canvas.yview)
-        scrollbar.pack(side="right", fill="y")
-
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-
-        self.sidebar = tk.Frame(canvas, bg="#2F3E50")
-        canvas.create_window((0,0), window=self.sidebar, anchor="nw")
-
-        tk.Label(self.sidebar, text="Modules", bg="#2F3E50", fg="white", font=("Segoe UI", 16, "bold")).pack(pady=15)
-
+        # Sidebar
+        self.sidebar_width = 300
+        self.current_open_module = None
+        self.module_frames = {}
+        self.submenus = {}
+        self.module_icons = {"Pharmacy": "💊", "Inventory": "📦", "Finance": "💰"}
         self.modules = {
             "Pharmacy": ["Purchase Order", "Attendance", "Leave", "Holiday"],
             "Inventory": ["Stock", "Purchase", "Sales", "Reports"],
             "Finance": ["Invoices", "Payments", "Budgets"],
         }
 
-        self.submenus = {}
-        self.current_open_module = None
+        self.create_sidebar()
+        self.create_main_area()
 
-        for module, submodules in self.modules.items():
-            # Module button
-            module_btn = tk.Button(self.sidebar, text=f"▶ {module}", 
-                                   bg="#34495E", fg="white", anchor="w",
-                                   relief="flat", padx=20, pady=10,
-                                   font=("Segoe UI", 12, "bold"),
-                                   width=25,
-                                   command=functools.partial(self.toggle_submenu, module))
-            module_btn.pack(fill="x", padx=0, pady=0)
-            module_btn.bind("<Enter>", lambda e, b=module_btn: b.config(bg="#3E5870"))
-            module_btn.bind("<Leave>", lambda e, b=module_btn: b.config(bg="#34495E"))
+    def get_colors(self):
+        return {
+            'sidebar_bg': '#0A1929', 'sidebar_active': '#1E3A5F', 'sidebar_hover': '#132F4C',
+            'submenu_bg': '#061321', 'submenu_hover': '#1A2B3C', 'main_bg': '#F8F9FA',
+            'card_bg': '#FFFFFF', 'header_bg': '#FFFFFF', 'text_dark': '#1E293B',
+            'text_medium': '#475569', 'text_light': '#94A3B8', 'primary': '#2563EB',
+            'primary_hover': '#1D4ED8', 'success': '#10B981', 'success_hover': '#059669',
+            'danger': '#EF4444', 'warning': '#F59E0B', 'border': '#E2E8F0',
+            'border_light': '#F1F5F9', 'accent': '#8B5CF6'
+        }
 
-            # Submenu frame directly under module button
-            submenu_frame = tk.Frame(self.sidebar, bg="#3B4C63")
-            submenu_frame.pack(fill="x", padx=0)
-            submenu_frame.pack_forget()  # hidden by default
+    def init_styles(self):
+        style = ttk.Style(self)
+        style.theme_use("clam")
+        style.configure("TButton", font=("Segoe UI", 10, "bold"), padding=(16, 10),
+                        background=self.colors['primary'], foreground="white", relief="flat")
+        style.map("TButton", background=[("active", self.colors['primary_hover'])])
+        style.configure("Sidebar.TButton", background=self.colors['sidebar_bg'], foreground="white",
+                        anchor="w", padding=(18, 14), relief="flat")
+        style.map("Sidebar.TButton", background=[("active", self.colors['sidebar_hover'])])
 
-            for sub in submodules:
-                sub_btn = tk.Button(submenu_frame, text=f"• {sub}",
-                                    bg="#3B4C63", fg="white", anchor="w",
-                                    relief="flat", padx=35, pady=8,
-                                    font=("Segoe UI", 11),
-                                    width=25,
-                                    command=functools.partial(self.load_features, module, sub))
-                sub_btn.pack(fill="x", padx=0, pady=1)
-                sub_btn.bind("<Enter>", lambda e, b=sub_btn: b.config(bg="#4B5D7A"))
-                sub_btn.bind("<Leave>", lambda e, b=sub_btn: b.config(bg="#3B4C63"))
+    # ---------------- Sidebar ---------------- #
+    def create_sidebar(self):
+        sidebar_container = tk.Frame(self, bg=self.colors['sidebar_bg'], width=self.sidebar_width)
+        sidebar_container.pack(side="left", fill="y")
+        sidebar_container.pack_propagate(False)
 
-            self.submenus[module] = submenu_frame  # Add submenu properly
+        self.create_logo(sidebar_container)
+        self.create_scrollable_sidebar(sidebar_container)
+
+    def create_logo(self, parent):
+        header_frame = tk.Frame(parent, bg=self.colors['sidebar_bg'], height=150)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
+
+        logo_container = tk.Frame(header_frame, bg="#102A43", height=120)
+        logo_container.pack(fill="x", padx=25, pady=15)
+        logo_container.pack_propagate(False)
+
+        shadow = tk.Frame(logo_container, bg="#0D2847", highlightthickness=2, highlightbackground="#1E3A5F")
+        shadow.pack(expand=True, fill="both", padx=3, pady=3)
+        shadow.pack_propagate(False)
+
+        logo_content = tk.Frame(shadow, bg="#102A43")
+        logo_content.pack(expand=True)
+
+        # Load logo
+        try:
+            logo_img = Image.open("logo.png").resize((100, 100), Image.LANCZOS)
+            self.logo_photo = ImageTk.PhotoImage(logo_img)
+            tk.Label(logo_content, image=self.logo_photo, bg="#102A43").pack(expand=True)
+        except:
+            tk.Label(logo_content, text="🐬", bg="#102A43", fg="white", font=("Segoe UI", 28)).pack(expand=True)
+
+    def create_scrollable_sidebar(self, parent):
+        canvas = tk.Canvas(parent, bg=self.colors['sidebar_bg'], width=self.sidebar_width, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+        self.sidebar = tk.Frame(canvas, bg=self.colors['sidebar_bg'])
+        canvas.create_window((0, 0), window=self.sidebar, anchor="nw", width=self.sidebar_width)
+
+        # Create modules
+        for module, subs in self.modules.items():
+            self.create_module_section(module, subs)
+
+    def create_module_section(self, module, submodules):
+        container = tk.Frame(self.sidebar, bg=self.colors['sidebar_bg'])
+        container.pack(fill="x", padx=15, pady=4)
+        inner = tk.Frame(container, bg=self.colors['sidebar_bg'], cursor="hand2")
+        inner.pack(fill="x")
+
+        # Left side (icon + text)
+        left = tk.Frame(inner, bg=self.colors['sidebar_bg'])
+        left.pack(side="left", fill="x", expand=True)
+        icon = tk.Label(left, text=self.module_icons.get(module, "📁"), bg=self.colors['sidebar_bg'],
+                        fg="white", font=("Segoe UI", 16))
+        icon.pack(side="left", padx=(0, 12))
+        text = tk.Label(left, text=module, bg=self.colors['sidebar_bg'], fg="white",
+                        font=("Segoe UI", 12, "bold"), anchor="w")
+        text.pack(side="left", fill="x", expand=True)
+        arrow = tk.Label(inner, text="›", bg=self.colors['sidebar_bg'], fg="#64B5F6",
+                         font=("Segoe UI", 18, "bold"))
+        arrow.pack(side="right")
+
+        self.module_frames[module] = {'container': container, 'inner': inner, 'icon': icon, 'text': text, 'arrow': arrow}
+
+        # Hover and click effects
+        for w in [container, inner, left, icon, text, arrow]:
+            w.bind("<Enter>", lambda e, m=module: self.on_module_hover(m, True))
+            w.bind("<Leave>", lambda e, m=module: self.on_module_hover(m, False))
+            w.bind("<Button-1>", lambda e, m=module: self.toggle_submenu(m))
+
+        # Submenu
+        submenu_frame = tk.Frame(self.sidebar, bg=self.colors['submenu_bg'])
+        for sub in submodules:
+            self.create_submenu_item(submenu_frame, module, sub)
+        self.submenus[module] = {"frame": submenu_frame}
+
+    def on_module_hover(self, module, enter):
+        if self.current_open_module != module:
+            color = self.colors['sidebar_hover'] if enter else self.colors['sidebar_bg']
+            for k in self.module_frames[module].values():
+                if isinstance(k, tk.Widget):
+                    k.config(bg=color)
+
+    def create_submenu_item(self, parent, module, sub):
+        cont = tk.Frame(parent, bg=self.colors['submenu_bg'], cursor="hand2")
+        cont.pack(fill="x", padx=8, pady=2)
+        inner = tk.Frame(cont, bg=self.colors['submenu_bg'])
+        inner.pack(fill="x", padx=12, pady=8)
+        bullet = tk.Label(inner, text="●", bg=self.colors['submenu_bg'], fg="#64B5F6", font=("Segoe UI", 8))
+        bullet.pack(side="left", padx=(20, 10))
+        txt = tk.Label(inner, text=sub, bg=self.colors['submenu_bg'], fg="#B0BEC5", font=("Segoe UI", 10))
+        txt.pack(side="left", fill="x", expand=True)
+
+        # Hover & click
+        for w in [cont, inner, bullet, txt]:
+            w.bind("<Enter>", lambda e, c=cont, i=inner, b=bullet, t=txt: self.on_sub_hover(c, i, b, t, True))
+            w.bind("<Leave>", lambda e, c=cont, i=inner, b=bullet, t=txt: self.on_sub_hover(c, i, b, t, False))
+            w.bind("<Button-1>", lambda e, m=module, s=sub: self.load_features(m, s))
+
+    def on_sub_hover(self, cont, inner, bullet, txt, enter):
+        bg = self.colors['submenu_hover'] if enter else self.colors['submenu_bg']
+        fg = "white" if enter else "#B0BEC5"
+        bullet_fg = "#90CAF9" if enter else "#64B5F6"
+        cont.config(bg=bg)
+        inner.config(bg=bg)
+        bullet.config(bg=bg, fg=bullet_fg)
+        txt.config(bg=bg, fg=fg)
 
     def toggle_submenu(self, module):
-        # Close previously open module submenu
         if self.current_open_module and self.current_open_module != module:
-            self.submenus[self.current_open_module].pack_forget()
+            self.submenus[self.current_open_module]["frame"].pack_forget()
+            self.module_frames[self.current_open_module]['arrow'].config(text="›")
+            self.on_module_hover(self.current_open_module, False)
 
-        submenu = self.submenus[module]
-
-        # Toggle current module
+        submenu = self.submenus[module]["frame"]
+        arrow = self.module_frames[module]['arrow']
         if submenu.winfo_ismapped():
             submenu.pack_forget()
+            arrow.config(text="›")
             self.current_open_module = None
+            self.on_module_hover(module, False)
         else:
-            submenu.pack(fill="x")
+            submenu.pack(fill="x", after=self.module_frames[module]['container'])
+            arrow.config(text="▾", fg="white")
             self.current_open_module = module
+            for k in self.module_frames[module].values():
+                if isinstance(k, tk.Widget):
+                    k.config(bg=self.colors['sidebar_active'])
 
+    # ---------------- Main Area ---------------- #
     def create_main_area(self):
-        self.main_area = tk.Frame(self, bg="#F0F2F5")
+        self.main_area = tk.Frame(self, bg=self.colors['main_bg'])
         self.main_area.pack(side="right", expand=True, fill="both")
 
-        self.title_label = tk.Label(self.main_area, text="Select a Module", 
-                                    font=("Segoe UI", 20, "bold"), bg="#F0F2F5", fg="#2C3E50")
-        self.title_label.pack(pady=20)
+        self.create_header()
+        self.feature_navbar = tk.Frame(self.main_area, bg=self.colors['main_bg'], height=65)
+        self.feature_navbar.pack(fill="x", padx=35, pady=(15, 0))
 
-        self.feature_navbar = tk.Frame(self.main_area, bg="#ECF0F1")
-        self.feature_navbar.pack(fill="x", padx=20, pady=5)
+        content_wrapper = tk.Frame(self.main_area, bg=self.colors['main_bg'])
+        content_wrapper.pack(pady=20, padx=35, fill="both", expand=True)
+        card_shadow = tk.Frame(content_wrapper, bg="#E2E8F0")
+        card_shadow.pack(fill="both", expand=True)
+        self.feature_frame = tk.Frame(card_shadow, bg=self.colors['card_bg'])
+        self.feature_frame.pack(fill="both", expand=True, padx=1, pady=1)
 
-        self.feature_frame = tk.Frame(self.main_area, bg="#F0F2F5")
-        self.feature_frame.pack(pady=10, padx=20, fill="both", expand=True)
+    def create_header(self):
+        header_outer = tk.Frame(self.main_area, bg=self.colors['header_bg'])
+        header_outer.pack(fill="x")
+        header_frame = tk.Frame(header_outer, bg=self.colors['header_bg'], height=80)
+        header_frame.pack(fill="x")
+        header_frame.pack_propagate(False)
 
+        # Left title
+        left_header = tk.Frame(header_frame, bg=self.colors['header_bg'])
+        left_header.pack(side="left", padx=35, pady=20)
+        self.title_label = tk.Label(left_header, text="Select a Module",
+                                    font=("Segoe UI", 24, "bold"), bg=self.colors['header_bg'],
+                                    fg=self.colors['text_dark'])
+        self.title_label.pack(side="left")
+
+        # Right user
+        right_header = tk.Frame(header_frame, bg=self.colors['header_bg'])
+        right_header.pack(side="right", padx=35)
+        user_badge = tk.Frame(right_header, bg="#EEF2FF")
+        user_badge.pack()
+        user_content = tk.Frame(user_badge, bg="#EEF2FF")
+        user_content.pack(padx=15, pady=8)
+        tk.Label(user_content, text="👤", bg="#EEF2FF", font=("Segoe UI", 14)).pack(side="left", padx=(0, 8))
+        tk.Label(user_content, text="Admin User", bg="#EEF2FF", fg=self.colors['text_dark'],
+                 font=("Segoe UI", 10, "bold")).pack(side="left")
+
+    # ---------------- Feature Loading ---------------- #
     def load_features(self, module, submodule):
-        for widget in self.feature_navbar.winfo_children():
-            widget.destroy()
-
-        self.title_label.config(text=f"{module} → {submodule}")
-
+        for w in self.feature_navbar.winfo_children():
+            w.destroy()
+        self.title_label.config(text=f"{module}  ›  {submodule}")
         self.features = {
             "Purchase Order": ["Create Purchase Order", "View Details", "Edit Purchase Order", "Delete Purchase Order"],
             "Attendance": ["Mark Attendance", "View Report", "Export CSV"],
             "Holiday": ["Add Holiday", "View Holidays", "Delete Holiday"],
             "Stock": ["Add Stock", "Update Stock", "Low Stock Alert"],
         }
-
         current_features = self.features.get(submodule, ["No features defined"])
+        tabs_container = tk.Frame(self.feature_navbar, bg=self.colors['card_bg'])
+        tabs_container.pack(fill="x")
 
         for f in current_features:
-            btn = ttk.Button(self.feature_navbar, text=f, command=lambda feat=f: self.show_feature_inputs(feat))
-            btn.pack(side="left", padx=5, pady=5)
+            self.create_tab(tabs_container, f)
 
-        for widget in self.feature_frame.winfo_children():
-            widget.destroy()
+        # Placeholder content
+        for w in self.feature_frame.winfo_children():
+            w.destroy()
+        placeholder = tk.Frame(self.feature_frame, bg=self.colors['card_bg'])
+        placeholder.pack(expand=True)
+        tk.Label(placeholder, text="📋", bg=self.colors['card_bg'], font=("Segoe UI", 50)).pack(pady=(0, 15))
+        tk.Label(placeholder, text="Choose a feature from above", font=("Segoe UI", 14),
+                 bg=self.colors['card_bg'], fg=self.colors['text_light']).pack()
 
+    def create_tab(self, parent, feature):
+        tab_btn = tk.Frame(parent, bg=self.colors['card_bg'], cursor="hand2")
+        tab_btn.pack(side="left", padx=3)
+        tab_content = tk.Frame(tab_btn, bg=self.colors['card_bg'])
+        tab_content.pack(padx=18, pady=14)
+        tab_label = tk.Label(tab_content, text=feature, bg=self.colors['card_bg'],
+                             fg=self.colors['text_medium'], font=("Segoe UI", 10, "bold"))
+        tab_label.pack()
+        indicator = tk.Frame(tab_btn, bg=self.colors['primary'], height=3)
+
+        def on_tab_click(e):
+            for child in parent.winfo_children():
+                for sub in child.winfo_children():
+                    if isinstance(sub, tk.Frame) and sub.winfo_height() == 3:
+                        sub.pack_forget()
+            indicator.pack(side="bottom", fill="x")
+            tab_label.config(fg=self.colors['primary'])
+            self.show_feature_inputs(feature)
+
+        for w in [tab_btn, tab_content, tab_label]:
+            w.bind("<Button-1>", on_tab_click)
+
+    # ---------------- Feature UI ---------------- #
     def show_feature_inputs(self, feature):
-        for widget in self.feature_frame.winfo_children():
-            widget.destroy()
-
-        tk.Label(self.feature_frame, text=f"{feature} Inputs", font=("Segoe UI", 16, "bold"), bg="#F0F2F5").pack(pady=10)
+        for w in self.feature_frame.winfo_children():
+            w.destroy()
+        content = tk.Frame(self.feature_frame, bg=self.colors['card_bg'])
+        content.pack(fill="both", expand=True, padx=45, pady=35)
+        tk.Label(content, text=f"📝 {feature}", font=("Segoe UI", 20, "bold"), bg=self.colors['card_bg']).pack()
 
         if feature == "Create Purchase Order":
-            # Create a frame to hold inputs in one row
-            input_row = tk.Frame(self.feature_frame, bg="#F0F2F5")
-            input_row.pack(fill="x", pady=5)
-
-            # List of input labels
-            labels = ["Supplier Name", "Order Date", "Total Amount", "Payment Terms", "Remarks"]
-            entries = []
-
-            for i, label_text in enumerate(labels):
-                # Create a subframe for each label+entry
-                sub_frame = tk.Frame(input_row, bg="#F0F2F5")
-                sub_frame.grid(row=0, column=i, padx=5, sticky="nsew")
-
-                tk.Label(sub_frame, text=label_text+":", bg="#F0F2F5").pack(anchor="w")
-                entry = tk.Entry(sub_frame, width=20)
-                entry.pack()
-                entries.append(entry)
-
-            # Make columns expand evenly
-            for i in range(len(labels)):
-                input_row.grid_columnconfigure(i, weight=1)
-
-            # Submit button below
-            ttk.Button(self.feature_frame, text="Submit", command=lambda: messagebox.showinfo("Submit", "Purchase Order Created")).pack(pady=10)
-
+            self.create_purchase_order_form(content)
         else:
-            tk.Label(self.feature_frame, text="Feature not implemented yet.", bg="#F0F2F5").pack(pady=20)
+            tk.Label(content, text="Feature UI under development", bg=self.colors['card_bg'],
+                     fg=self.colors['text_light'], font=("Segoe UI", 12)).pack(pady=50)
 
+    def create_purchase_order_form(self, parent):
+        fields = ["Supplier Name", "Order Date", "Total Amount", "Payment Terms", "Remarks"]
+        self.entries = {}
+        form_frame = tk.Frame(parent, bg=self.colors['card_bg'])
+        form_frame.pack(fill="both", expand=True, pady=20)
+
+        for f in fields:
+            field_frame = tk.Frame(form_frame, bg=self.colors['card_bg'])
+            field_frame.pack(fill="x", pady=10)
+            tk.Label(field_frame, text=f, bg=self.colors['card_bg'], fg=self.colors['text_dark'],
+                     font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
+            entry_frame = tk.Frame(field_frame, bg="white", highlightbackground=self.colors['border'],
+                                   highlightcolor=self.colors['primary'], highlightthickness=2)
+            entry_frame.pack(fill="x")
+            entry = tk.Entry(entry_frame, font=("Segoe UI", 11), bg="white", fg=self.colors['text_dark'], relief="flat")
+            entry.pack(fill="x", padx=15, pady=12)
+            self.entries[f] = entry
+
+        # Submit Button
+        submit_frame = tk.Frame(parent, bg=self.colors['success'], cursor="hand2")
+        submit_frame.pack(pady=30)
+        submit_label = tk.Label(submit_frame, text="✅ Submit Purchase Order",
+                                bg=self.colors['success'], fg="white", font=("Segoe UI", 10, "bold"))
+        submit_label.pack(padx=35, pady=14)
+
+        submit_frame.bind("<Button-1>", lambda e: self.submit_purchase_order())
+        submit_label.bind("<Button-1>", lambda e: self.submit_purchase_order())
+
+    def submit_purchase_order(self):
+        data = {f: self.entries[f].get() for f in self.entries}
+        messagebox.showinfo("Submitted", f"Purchase Order Created:\n\n{data}")
 
 if __name__ == "__main__":
     app = AutomationDashboard()
