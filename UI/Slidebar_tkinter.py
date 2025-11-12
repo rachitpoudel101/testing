@@ -1,7 +1,13 @@
 import tkinter as tk
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
+import threading
 
+# Import your PurchaseOrder automation class
+from Purchase_Order.create_purchase_order import PurchaseOrder 
 class AutomationDashboard(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -214,17 +220,6 @@ class AutomationDashboard(tk.Tk):
                                     fg=self.colors['text_dark'])
         self.title_label.pack(side="left")
 
-        # Right user
-        right_header = tk.Frame(header_frame, bg=self.colors['header_bg'])
-        right_header.pack(side="right", padx=35)
-        user_badge = tk.Frame(right_header, bg="#EEF2FF")
-        user_badge.pack()
-        user_content = tk.Frame(user_badge, bg="#EEF2FF")
-        user_content.pack(padx=15, pady=8)
-        tk.Label(user_content, text="👤", bg="#EEF2FF", font=("Segoe UI", 14)).pack(side="left", padx=(0, 8))
-        tk.Label(user_content, text="Admin User", bg="#EEF2FF", fg=self.colors['text_dark'],
-                 font=("Segoe UI", 10, "bold")).pack(side="left")
-
     # ---------------- Feature Loading ---------------- #
     def load_features(self, module, submodule):
         for w in self.feature_navbar.winfo_children():
@@ -232,8 +227,6 @@ class AutomationDashboard(tk.Tk):
         self.title_label.config(text=f"{module}  ›  {submodule}")
         self.features = {
             "Purchase Order": ["Create Purchase Order", "View Details", "Edit Purchase Order", "Delete Purchase Order"],
-            "Attendance": ["Mark Attendance", "View Report", "Export CSV"],
-            "Holiday": ["Add Holiday", "View Holidays", "Delete Holiday"],
             "Stock": ["Add Stock", "Update Stock", "Low Stock Alert"],
         }
         current_features = self.features.get(submodule, ["No features defined"])
@@ -289,27 +282,40 @@ class AutomationDashboard(tk.Tk):
                      fg=self.colors['text_light'], font=("Segoe UI", 12)).pack(pady=50)
 
     def create_purchase_order_form(self, parent):
-        fields = ["Supplier Name", "Order Date", "Total Amount", "Payment Terms", "Remarks"]
+        fields = ["Username", "Password", "Supplier Name", "Order Date", "Payment Terms", "Remarks"]
         self.entries = {}
         form_frame = tk.Frame(parent, bg=self.colors['card_bg'])
         form_frame.pack(fill="both", expand=True, pady=20)
 
-        for f in fields:
+        max_rows_per_column = 5
+        num_columns = (len(fields) + max_rows_per_column - 1) // max_rows_per_column  # ceil division
+
+        for index, f in enumerate(fields):
+            col = index // max_rows_per_column
+            row = index % max_rows_per_column
+
             field_frame = tk.Frame(form_frame, bg=self.colors['card_bg'])
-            field_frame.pack(fill="x", pady=10)
+            field_frame.grid(row=row, column=col, padx=20, pady=10, sticky="nsew")
+
             tk.Label(field_frame, text=f, bg=self.colors['card_bg'], fg=self.colors['text_dark'],
-                     font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
+                    font=("Segoe UI", 11, "bold")).pack(anchor="w", pady=(0, 6))
             entry_frame = tk.Frame(field_frame, bg="white", highlightbackground=self.colors['border'],
-                                   highlightcolor=self.colors['primary'], highlightthickness=2)
+                                highlightcolor=self.colors['primary'], highlightthickness=2)
             entry_frame.pack(fill="x")
             entry = tk.Entry(entry_frame, font=("Segoe UI", 11), bg="white", fg=self.colors['text_dark'], relief="flat")
             entry.pack(fill="x", padx=15, pady=12)
             self.entries[f] = entry
+            if f == "Password":
+                entry.config(show="*")
 
-        # Submit Button
+        # Make columns expand equally
+        for col in range(num_columns):
+            form_frame.grid_columnconfigure(col, weight=1)
+
+        # Submit Button (span across all columns)
         submit_frame = tk.Frame(parent, bg=self.colors['success'], cursor="hand2")
         submit_frame.pack(pady=30)
-        submit_label = tk.Label(submit_frame, text="✅ Submit Purchase Order",
+        submit_label = tk.Label(submit_frame, text=" Submit Purchase Order",
                                 bg=self.colors['success'], fg="white", font=("Segoe UI", 10, "bold"))
         submit_label.pack(padx=35, pady=14)
 
@@ -318,7 +324,20 @@ class AutomationDashboard(tk.Tk):
 
     def submit_purchase_order(self):
         data = {f: self.entries[f].get() for f in self.entries}
-        messagebox.showinfo("Submitted", f"Purchase Order Created:\n\n{data}")
+        username = data.get("Username")
+        password = data.get("Password")
+
+        # Run automation in a separate thread to avoid freezing the GUI
+        threading.Thread(target=self.run_purchase_order_bot, args=(username, password)).start()
+
+    def run_purchase_order_bot(self, username, password):
+        try:
+            bot = PurchaseOrder(username, password)
+            bot.load_dashboard()
+            messagebox.showinfo("Success", "Purchase Order automation completed successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Automation failed:\n{e}")
+
 
 if __name__ == "__main__":
     app = AutomationDashboard()
