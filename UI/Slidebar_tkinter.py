@@ -282,7 +282,7 @@ class AutomationDashboard(tk.Tk):
                      fg=self.colors['text_light'], font=("Segoe UI", 12)).pack(pady=50)
 
     def create_purchase_order_form(self, parent):
-        fields = ["Username", "Password", "Supplier Name", "Order Date", "Payment Terms", "Remarks"]
+        fields = ["Username", "Password", "Supplier Name","Store Name", "Order Date", "Payment Terms", "Remarks"]
         self.entries = {}
         form_frame = tk.Frame(parent, bg=self.colors['card_bg'])
         form_frame.pack(fill="both", expand=True, pady=20)

@@ -3,10 +3,10 @@ import traceback
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
-from core.core_setup import BaseCanteenAutomation
+from core.core_setup import BaseAutomation
 
 
-class PurchaseOrder(BaseCanteenAutomation):
+class PurchaseOrder(BaseAutomation):
     def load_dashboard(self):
         try:
             self.init_driver()

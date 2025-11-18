@@ -12,14 +12,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 AUTH_USER = "mav"
 AUTH_PASS = "mavsecret"
 LOGIN_URL = "https://uattuth.dolphin.com.np/login"
-# DASHBOARD_URL = "https://uattuth.dolphin.com.np/phar/pharmacy/mdashboard"
+PURCHASE_RETURN_URL = "https://uattuth.dolphin.com.np/phar/pharmacy/purchases_return/purchase_return"
 LOG_FILE = "core_test_result.log"
 
 
 # ----------------------------------------------------------------------
 #  Base Class: Handles driver setup, login, and cleanup
 # ----------------------------------------------------------------------
-class BaseCanteenAutomation:
+class BaseAutomation:
     def __init__(self, username, password, log_callback=None):
         self.username = username
         self.password = password

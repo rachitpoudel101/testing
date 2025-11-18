@@ -4,7 +4,6 @@ import time
 import traceback
 from faker import Faker
 import random
-import requests
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,7 +13,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.core_setup import BaseCanteenAutomation
 
 
-fake = Faker('en_IN')  
+# ✅ Initialize Faker
+fake = Faker('en_IN')  # Use Indian locale (close to Nepali data style)
+
 
 def collect_inputs(use_faker=True):
     """Collect all Purchase Order fields dynamically or generate with Faker."""
@@ -23,7 +24,7 @@ def collect_inputs(use_faker=True):
     if use_faker:
         print("[INFO] Generating fake data using Faker...")
 
-        # data['supplier'] = fake.company()
+        data['supplier'] = fake.company()
         data['store'] = fake.city()
         data['delivery_date'] = fake.date_this_year().strftime("%Y-%m-%d")
         data['prepared_by'] = fake.name()
@@ -76,8 +77,6 @@ class PurchaseOrder(BaseCanteenAutomation):
             time.sleep(2)
             self.go_to_purchase_order()
             self.open_add_purchase_order_page()
-            time.sleep(3)
-            self.get_random_supplier_name()
             time.sleep(3)
 
             if input_data:
@@ -161,67 +160,34 @@ class PurchaseOrder(BaseCanteenAutomation):
             self.log(f"Error opening Add Purchase Order page: {e}")
             traceback.print_exc()
 
-    def get_random_supplier_name(self):
-        url = "https://uattuth.dolphin.com.np/phar/api/supplier"
+
+    def select_supplier(self, supplier_name):
+        """Select a supplier by typing and pressing ENTER."""
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()  
-
-            data = resp.json()  # decode JSON safely
-            suppliers = data.get("data", [])
-            if not suppliers:
-                self.log("[WARN] No suppliers returned from API, using fallback list")
-                suppliers = [
-                    "SWASTHYA SEWA BIBHAG",
-                    "ABSOLUTE PHARMASALES",
-                    "NEPAL AUSHADHI LIMITED"
-                ]
-
-            names = [item.get("supplier_name") for item in suppliers if item.get("supplier_name")] 
-            return random.choice(names) if names else random.choice(suppliers)
-
-        except (requests.RequestException, ValueError) as e:
-            self.log(f"[ERROR] Failed to fetch suppliers from API: {e}. Using fallback list.")
-            fallback = ["SWASTHYA SEWA BIBHAG", "ABSOLUTE PHARMASALES", "NEPAL AUSHADHI LIMITED"]
-            return random.choice(fallback)
-            # return random name
-
-    def select_supplier(self, supplier_name=None):
-        """Select a random supplier from API using Selenium multiselect."""
-        try:
-            # 🔥 STEP 1: Get random name from API
-            supplier_name = self.get_random_supplier_name()
-            self.log(f"[API] Random supplier selected: {supplier_name}")
-
-            # 🔥 STEP 2: Open the Vue multiselect
+            self.log(f"Selecting supplier: {supplier_name}")
             multiselect_span = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable(
                     (By.XPATH, "//div[@class='multiselect custom-widthed-multiselect']//div[@class='multiselect__tags']")
                 )
             )
             multiselect_span.click()
+            self.log("Clicked multiselect span to activate input.")
             time.sleep(0.5)
-
-            # 🔥 STEP 3: Type into input field
             input_field = self.driver.find_element(
                 By.XPATH,
                 "//div[@class='multiselect custom-widthed-multiselect']//input[@name='supplier']"
             )
-
             self.driver.execute_script("arguments[0].focus();", input_field)
             time.sleep(0.2)
-
             input_field.send_keys(supplier_name)
             time.sleep(0.5)
 
-            # 🔥 STEP 4: Hit Enter to select
             input_field.send_keys(Keys.ENTER)
-            self.log(f"Supplier '{supplier_name}' selected successfully (Random).")
-
+            self.log(f"Supplier '{supplier_name}' selected successfully via typing.")
             time.sleep(0.5)
 
         except Exception as e:
-            self.log(f"Error selecting random supplier: {e}")
+            self.log(f"Error selecting supplier: {e}")
             traceback.print_exc()
 
 
