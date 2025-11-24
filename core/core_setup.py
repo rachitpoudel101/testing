@@ -14,6 +14,7 @@ AUTH_PASS = "mavsecret"
 LOGIN_URL = "https://uattuth.dolphin.com.np/login"
 PURCHASE_RETURN_URL = "https://uattuth.dolphin.com.np/phar/pharmacy/purchases_return/purchase_return"
 STOCK_TRANSFER_URL = "https://uattuth.dolphin.com.np/phar/pharmacy/issuestock/create"
+STOCK_CONSUMPTION_URL = "https://uattuth.dolphin.com.np/phar/pharmacy/stockconsumption/create"
 LOG_FILE = "core_test_result.log"
 
 
